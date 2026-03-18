@@ -21,11 +21,11 @@ const Hero = ({ onOpenModal }: { onOpenModal: () => void }) => {
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.25 }}
-        className="absolute right-[170px] top-28 z-20 sm:right-[190px] sm:top-32"
+        className="absolute right-[245px] top-24 z-20 sm:right-[265px] sm:top-28"
       >
         <span
           aria-label="18+"
-          className="neon-btn neon-pulse inline-flex h-24 w-24 select-none items-center justify-center rounded-full text-5xl font-extrabold tracking-wide text-white sm:h-32 sm:w-32 sm:text-5xl"
+          className="neon-btn neon-pulse inline-flex h-[4.5rem] w-[4.5rem] select-none items-center justify-center rounded-full text-4xl font-extrabold tracking-wide text-white sm:h-24 sm:w-24 sm:text-4xl"
         >
           18+
         </span>

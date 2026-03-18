@@ -97,6 +97,10 @@ const translations: Translations = {
   "story.6.desc": { ru: "Золото, штормы и страсть на грани жизни и смерти.", en: "Gold, storms and passion on the edge of life and death." },
   "story.6.scene": { ru: "«Ты на капитанском мостике. Она приставляет саблю к твоему горлу с улыбкой: \"Выбирай: поцелуй или прыжок за борт?\"…»", en: "\"You're on the captain's bridge. She puts a saber to your throat with a smile: 'Choose: a kiss or jump overboard?'…\"" },
 
+  "story.7.title": { ru: "Нуар: Дело о запретной ночи", en: "Noir: Case of the Forbidden Night" },
+  "story.7.desc": { ru: "Дождь, неон и детектив, который слишком хорошо читает людей — особенно тебя.", en: "Rain, neon, and a detective who reads people too well—especially you." },
+  "story.7.scene": { ru: "«Полутёмный кабинет. Он закрывает дверь и говорит тихо: \"Цена — доверие\"…»", en: "\"A dim office. He locks the door and says softly: 'The price is trust'…\"" },
+
   // Pricing
   "price.title": { ru: "Начни бесплатно — продолжай когда влюбишься", en: "Start free — continue when you fall in love" },
   "price.note": { ru: "Плати только когда не сможешь остановиться", en: "Pay only when you can't stop" },

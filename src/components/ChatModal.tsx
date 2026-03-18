@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send } from "lucide-react";
-import { Story } from "@/data/stories";
+import { History } from "@/data/stories";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -11,11 +11,6 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   choices?: string[];
-}
-
-interface ApiMessage {
-  role: "user" | "assistant";
-  content: string;
 }
 
 // ─── Typing dots ──────────────────────────────────────────────────────────────
@@ -56,10 +51,104 @@ const MessageText = ({ text }: { text: string }) => (
   </>
 );
 
+// ─── Local mock engine (no backend) ───────────────────────────────────────────
+
+const hash = (s: string) => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+
+const pick = <T,>(arr: T[], seed: number) => arr[seed % arr.length];
+
+const buildMockReply = (story: History, userText: string, turn: number): { content: string; choices: string[] } => {
+  const seed = hash(`${story.id}|${turn}|${userText}`);
+
+  const atmospheres = [
+    "*В воздухе дрожит напряжение. Кажется, один шаг — и всё изменится.*",
+    "*Слова остаются между вами, как тёплый след на коже.*",
+    "*Снаружи мир шумит, но здесь слышно только дыхание.*",
+    "*Тишина становится интимной — слишком близкой, слишком честной.*",
+    "*Время будто замирает, оставляя вам право на выбор.*",
+  ];
+
+  const openers = {
+    titanic: [
+      "Я улыбаюсь краем губ и чуть наклоняюсь ближе, чтобы ветер не унес твои слова.",
+      "Я опираюсь на перила рядом с тобой — так близко, что ты чувствуешь тепло.",
+      "Я смотрю на море, а потом возвращаю взгляд к тебе: будто всё самое важное — здесь.",
+    ],
+    spiderman: [
+      "Я пытаюсь пошутить, но голос внезапно становится слишком тихим и серьёзным.",
+      "Я цепляюсь рукой за трос и подаю тебе ладонь — не отпущу, если возьмёшься.",
+      "Я делаю шаг ближе, и маска уже не кажется границей.",
+    ],
+    twilight: [
+      "Я задерживаю взгляд на твоих губах дольше, чем позволил бы здравый смысл.",
+      "Я дышу медленно — как будто это единственный способ себя контролировать.",
+      "Я отступаю на полшага… и всё равно остаюсь опасно близко.",
+    ],
+    mafia: [
+      "Я говорю спокойно, но в голосе слышна власть — и обещание.",
+      "Я чуть приподнимаю твой подбородок двумя пальцами, проверяя, дрогнешь ли ты.",
+      "Я улыбаюсь так, будто уже решил исход — но оставляю выбор тебе.",
+    ],
+    cyberpunk: [
+      "Неон отражается в моих имплантах, когда я наконец смотрю прямо на тебя.",
+      "Я шепчу так, словно слова — это пароль, который ты можешь принять или отвергнуть.",
+      "Я наклоняюсь ближе, и мир превращается в короткое замыкание.",
+    ],
+    pirate: [
+      "Я смеюсь низко и хищно, будто ты — самая сладкая добыча этого моря.",
+      "Я делаю круг вокруг тебя, словно палуба — сцена, а ты — мой единственный зритель.",
+      "Я склоняю голову и говорю тихо, чтобы слышала только ты.",
+    ],
+    default: [
+      "Я задерживаю взгляд на тебе дольше, чем следует.",
+      "Я делаю шаг ближе — медленно, давая тебе время остановить меня.",
+      "Я отвечаю спокойно, но между строк всё равно слышна жара.",
+    ],
+  } as const;
+
+  const opener = pick((openers as any)[story.id] ?? openers.default, seed);
+  const atmosphere = pick(atmospheres, seed + 7);
+
+  const content = `${opener} «${userText.trim()}», — повторяю я тихо, будто пробую эти слова на вкус.\n${atmosphere}`;
+
+  const choices = [
+    pick(
+      [
+        "Я улыбаюсь и делаю шаг навстречу.",
+        "Я отвечаю мягко и честно.",
+        "Я позволяю себе быть нежной.",
+      ],
+      seed + 1
+    ),
+    pick(
+      [
+        "Я бросаю дерзкий вызов и не отвожу взгляд.",
+        "Я приближаюсь слишком близко — нарочно.",
+        "Я говорю провокацию и жду реакцию.",
+      ],
+      seed + 2
+    ),
+    pick(
+      [
+        "Я задаю вопрос, который меняет правила игры.",
+        "Я молчу секунду… и делаю неожиданный выбор.",
+        "Я намекаю на секрет и проверяю тебя.",
+      ],
+      seed + 3
+    ),
+  ];
+
+  return { content, choices };
+};
+
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 interface ChatModalProps {
-  story: Story;
+  story: History;
   storyImage: string;
   storyTitle: string;
   onClose: () => void;
@@ -68,16 +157,22 @@ interface ChatModalProps {
 const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) => {
   const { lang } = useLanguage();
 
+  const [currentStepId, setCurrentStepId] = useState<string>(story.startStepId);
+
+  const getStep = useCallback(
+    (stepId: string) => story.steps[stepId] ?? story.steps[story.startStepId],
+    [story]
+  );
+
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: story.openingMessage,
-      choices: story.openingChoices,
+      content: getStep(story.startStepId).message,
+      choices: getStep(story.startStepId).choices.map((c) => c.text),
     },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [apiHistory, setApiHistory] = useState<ApiMessage[]>([]);
 
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -97,74 +192,62 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const parseResponse = (text: string): { content: string; choices: string[] } => {
-    const jsonMatch = text.match(/\{"choices"\s*:\s*\[[\s\S]*?\]\}/);
-    let choices: string[] = [];
-    let content = text;
-    if (jsonMatch) {
+  const advanceByChoice = useCallback(
+    async (userText: string, nextStepId: string) => {
+      if (!userText.trim() || loading) return;
+      setInput("");
+
+      // Optimistically add user message + loading placeholder
+      setMessages((prev) => [
+        ...prev,
+        { role: "user", content: userText },
+        { role: "assistant", content: "", choices: [] },
+      ]);
+      setLoading(true);
+
       try {
-        const parsed = JSON.parse(jsonMatch[0]);
-        choices = parsed.choices ?? [];
-        content = text.replace(jsonMatch[0], "").trim();
+        await new Promise((r) => setTimeout(r, 450));
+
+        const nextStep = getStep(nextStepId);
+        setCurrentStepId(nextStepId);
+
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: nextStep.message,
+            choices: nextStep.choices.map((c) => c.text),
+          };
+          return updated;
+        });
       } catch {
-        // ignore parse errors
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: "Ошибка. Попробуй ещё раз.",
+            choices: [],
+          };
+          return updated;
+        });
       }
-    }
-    return { content, choices };
-  };
+
+      setLoading(false);
+    },
+    [getStep, loading]
+  );
 
   const sendMessage = useCallback(async (userText: string) => {
     if (!userText.trim() || loading) return;
-    setInput("");
+    const step = getStep(currentStepId);
+    const options = step.choices;
+    if (!options || options.length === 0) return;
 
-    // Optimistically add user message + loading placeholder
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", content: userText },
-      { role: "assistant", content: "", choices: [] },
-    ]);
-    setLoading(true);
-
-    const newHistory: ApiMessage[] = [
-      ...apiHistory,
-      { role: "user", content: userText },
-    ];
-
-    try {
-      // Calls your backend proxy — see server.js
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemPrompt: story.systemPrompt,
-          messages: newHistory,
-        }),
-      });
-
-      const data = await res.json();
-      const rawText: string = data.content ?? "Что-то пошло не так…";
-      const { content, choices } = parseResponse(rawText);
-
-      setApiHistory([...newHistory, { role: "assistant", content: rawText }]);
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = { role: "assistant", content, choices };
-        return updated;
-      });
-    } catch {
-      setMessages((prev) => {
-        const updated = [...prev];
-        updated[updated.length - 1] = {
-          role: "assistant",
-          content: "Ошибка соединения. Попробуй ещё раз.",
-          choices: [],
-        };
-        return updated;
-      });
-    }
-
-    setLoading(false);
-  }, [loading, apiHistory, story.systemPrompt]);
+    // If user typed free text, pick a branch deterministically.
+    const seed = hash(`${story.id}|${currentStepId}|${userText}`);
+    const chosen = options[seed % options.length];
+    await advanceByChoice(userText, chosen.nextStepId);
+  }, [advanceByChoice, currentStepId, getStep, loading, story.id]);
 
   const handleKey = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -283,7 +366,11 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
                       {msg.choices.map((choice, ci) => (
                         <button
                           key={ci}
-                          onClick={() => sendMessage(choice)}
+                          onClick={() => {
+                            const step = getStep(currentStepId);
+                            const found = step.choices.find((c) => c.text === choice);
+                            void advanceByChoice(choice, found?.nextStepId ?? story.startStepId);
+                          }}
                           className="choice-btn rounded-xl border border-border bg-card px-3 py-2.5 text-left text-xs text-secondary-foreground transition-all duration-200"
                         >
                           <span className="mr-2 text-[10px]" style={{ color: story.accentColor }}>▸</span>

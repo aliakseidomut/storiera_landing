@@ -22,7 +22,7 @@ const Index = () => {
       <Hero onOpenModal={goToApp} />
       <HighlightsSection />
       <ForWhoSection />
-      <StoriesSection onOpenModal={goToApp} />
+      <StoriesSection />
       <HowItWorksSection />
       <PricingSection onOpenModal={goToApp} />
       <FeaturesSection />

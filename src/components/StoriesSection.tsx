@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ChatModal from "@/components/ChatModal";
-import { STORIES, Story } from "@/data/stories";
+import { STORIES, History } from "@/data/stories";
 
 import storyTitanic from "@/assets/story-titanic.jpg";
 import storySpiderman from "@/assets/story-spiderman.jpg";
@@ -11,24 +11,25 @@ import storyTwilight from "@/assets/story-twilight.jpg";
 import storyMafia from "@/assets/story-mafia.jpg";
 import storyCyberpunk from "@/assets/story-cyberpunk.jpg";
 import storyPirate from "@/assets/story-pirate.jpg";
+import showcase1 from "@/assets/showcase-1.jpg";
 
-// Порядок совпадает с порядком в STORIES
-const IMAGES = [
-  storyTitanic,
-  storySpiderman,
-  storyTwilight,
-  storyMafia,
-  storyCyberpunk,
-  storyPirate,
-];
+const IMAGE_BY_KEY: Record<string, string> = {
+  "story-titanic": storyTitanic,
+  "story-spiderman": storySpiderman,
+  "story-twilight": storyTwilight,
+  "story-mafia": storyMafia,
+  "story-cyberpunk": storyCyberpunk,
+  "story-pirate": storyPirate,
+  "showcase-1": showcase1,
+};
 
 const StoriesSection = () => {
   const { t } = useLanguage();
-  const [activeStory, setActiveStory] = useState<Story | null>(null);
+  const [activeStory, setActiveStory] = useState<History | null>(null);
   const [activeImage, setActiveImage] = useState<string>("");
   const [activeTitle, setActiveTitle] = useState<string>("");
 
-  const openChat = (story: Story, img: string, title: string) => {
+  const openChat = (story: History, img: string, title: string) => {
     setActiveStory(story);
     setActiveImage(img);
     setActiveTitle(title);
@@ -52,14 +53,27 @@ const StoriesSection = () => {
             <h2 className="text-gradient mb-3 text-3xl font-bold tracking-tight sm:text-4xl">
               {t("stories.title")}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {t("stories.subtitle") || "Нажми на карточку — чат откроется прямо здесь"}
-            </p>
+
           </motion.div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {STORIES.map((story, i) => {
-              const img = IMAGES[i];
+              // Map id -> existing image keys
+              const imgKey =
+                story.id === "titanic"
+                  ? "story-titanic"
+                  : story.id === "spiderman"
+                    ? "story-spiderman"
+                    : story.id === "twilight"
+                      ? "story-twilight"
+                      : story.id === "mafia"
+                        ? "story-mafia"
+                        : story.id === "cyberpunk"
+                          ? "story-cyberpunk"
+                          : story.id === "noir"
+                            ? "showcase-1"
+                          : "story-pirate";
+              const img = IMAGE_BY_KEY[imgKey] ?? storyTitanic;
               const title = t(story.titleKey);
 
               return (
@@ -96,9 +110,6 @@ const StoriesSection = () => {
                   <div className="p-5">
                     <h3 className="mb-2 text-lg font-bold text-foreground">{title}</h3>
                     <p className="mb-3 text-sm text-muted-foreground">{t(story.descKey)}</p>
-                    <p className="mb-4 rounded-lg bg-accent/50 p-3 text-xs italic text-secondary-foreground leading-relaxed">
-                      {t(story.sceneKey)}
-                    </p>
                     <button
                       className="neon-btn w-full rounded-lg px-4 py-2.5 text-sm font-bold"
                       onClick={(e) => {
