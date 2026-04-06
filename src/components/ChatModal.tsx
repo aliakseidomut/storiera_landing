@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Send } from "lucide-react";
-import { History } from "@/data/stories";
+import { History, LocalizedText } from "@/data/stories";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -156,6 +156,12 @@ interface ChatModalProps {
 
 const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) => {
   const { lang } = useLanguage();
+  const APP_URL = "https://storiera.run.place/";
+
+  const lt = useCallback(
+    (v: LocalizedText) => (lang === "ru" ? v.ru : v.en),
+    [lang]
+  );
 
   const [currentStepId, setCurrentStepId] = useState<string>(story.startStepId);
 
@@ -167,8 +173,8 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: getStep(story.startStepId).message,
-      choices: getStep(story.startStepId).choices.map((c) => c.text),
+      content: lt(getStep(story.startStepId).message),
+      choices: getStep(story.startStepId).choices.map((c) => lt(c.text)),
     },
   ]);
   const [input, setInput] = useState("");
@@ -215,8 +221,8 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
-            content: nextStep.message,
-            choices: nextStep.choices.map((c) => c.text),
+            content: lt(nextStep.message),
+            choices: nextStep.choices.map((c) => lt(c.text)),
           };
           return updated;
         });
@@ -225,7 +231,7 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
           const updated = [...prev];
           updated[updated.length - 1] = {
             role: "assistant",
-            content: "Ошибка. Попробуй ещё раз.",
+            content: lang === "ru" ? "Ошибка. Попробуй ещё раз." : "Error. Please try again.",
             choices: [],
           };
           return updated;
@@ -257,6 +263,7 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
   };
 
   const lastMessageIndex = messages.length - 1;
+  const isAtEnd = getStep(currentStepId).choices.length === 0;
 
   return (
     <AnimatePresence>
@@ -368,7 +375,7 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
                           key={ci}
                           onClick={() => {
                             const step = getStep(currentStepId);
-                            const found = step.choices.find((c) => c.text === choice);
+                            const found = step.choices.find((c) => lt(c.text) === choice);
                             void advanceByChoice(choice, found?.nextStepId ?? story.startStepId);
                           }}
                           className="choice-btn rounded-xl border border-border bg-card px-3 py-2.5 text-left text-xs text-secondary-foreground transition-all duration-200"
@@ -386,6 +393,38 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
 
           {/* ── Input ── */}
           <div className="flex-shrink-0 border-t border-border bg-card px-4 pb-4 pt-3">
+            {isAtEnd && (
+              <div className="mb-3 flex flex-col gap-2">
+                <button
+                  onClick={() => (window.location.href = APP_URL)}
+                  className="rounded-xl px-3 py-3 text-sm font-semibold transition-all duration-200"
+                  style={{
+                    background: story.accentColor,
+                    color: "#000",
+                    boxShadow: `0 0 18px ${story.accentColor}66`,
+                  }}
+                >
+                  {lang === "ru" ? "Открыть приложение Storiera" : "Open the Storiera app"}
+                </button>
+                <button
+                  onClick={() => {
+                    const start = getStep(story.startStepId);
+                    setCurrentStepId(story.startStepId);
+                    setMessages([
+                      {
+                        role: "assistant",
+                        content: lt(start.message),
+                        choices: start.choices.map((c) => lt(c.text)),
+                      },
+                    ]);
+                    setInput("");
+                  }}
+                  className="rounded-xl border border-border bg-card px-3 py-2.5 text-xs text-secondary-foreground transition-colors hover:bg-accent"
+                >
+                  {lang === "ru" ? "Начать заново" : "Start over"}
+                </button>
+              </div>
+            )}
             <div className="flex items-end gap-2">
               <textarea
                 ref={inputRef}
@@ -393,7 +432,7 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKey}
                 placeholder={lang === "ru" ? "Напиши что угодно…" : "Write anything…"}
-                disabled={loading}
+                disabled={loading || isAtEnd}
                 rows={1}
                 className="chat-input flex-1 resize-none rounded-xl border border-border bg-secondary px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:border-ring"
                 style={{ maxHeight: 120, overflowY: "auto", lineHeight: 1.5 }}
@@ -405,7 +444,7 @@ const ChatModal = ({ story, storyImage, storyTitle, onClose }: ChatModalProps) =
               />
               <button
                 onClick={() => sendMessage(input)}
-                disabled={loading || !input.trim()}
+                disabled={loading || isAtEnd || !input.trim()}
                 className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-all duration-200 disabled:opacity-30"
                 style={{
                   background: input.trim() && !loading ? story.accentColor : "hsl(var(--secondary))",
